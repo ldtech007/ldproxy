@@ -1,0 +1,194 @@
+CC := gcc
+CPPC := g++
+
+TARGET := $(strip $(TARGET))
+INSTALL_DIR := $(strip $(INSTALL_DIR))
+COMM_CODE := $(strip $(COMM_CODE))
+COMM_SO := $(strip $(COMM_SO))
+private_comp_INC := $(strip $(private_comp_INC))
+private_ld_LINK := $(strip $(private_ld_LINK))
+private_comp_flag := $(strip $(private_comp_flag))
+private_comp_flag_c := $(strip $(private_comp_flag_c))
+private_comp_flag_cpp := $(strip $(private_comp_flag_cpp))
+private_ld_flag := $(strip $(private_ld_flag))
+obj_extra := $(strip $(obj_extra))
+private_install_cmd := $(strip $(private_install_cmd))
+
+LD_TECH_comp_INC := $(strip $(LD_TECH_comp_INC))
+LD_TECH_ld_LINK_so := $(strip $(LD_TECH_ld_LINK_so))
+LD_TECH_ld_LINK_app := $(strip $(LD_TECH_ld_LINK_app))
+LD_TECH_comp_flag := $(strip $(LD_TECH_comp_flag))
+LD_TECH_comp_flag_c := $(strip $(LD_TECH_comp_flag_c))
+LD_TECH_comp_flag_cpp := $(strip $(LD_TECH_comp_flag_cpp))
+LD_TECH_ld_flag := $(strip $(LD_TECH_ld_flag))
+
+ifeq ($(strip $(IS_APP)), yes)
+    LD_TECH_comp_flag +=-fPIE
+    this_target_dir := $(this_app_dir)
+    LD_TECH_ld_LINK := $(LD_TECH_ld_LINK_app)
+    LD_TECH_ld_flag += -pie
+ 
+else ifeq ($(strip $(IS_SO)), yes)
+    this_target_dir := $(this_so_dir)
+    LD_TECH_comp_flag += -fPIC
+    LD_TECH_ld_LINK := $(LD_TECH_ld_LINK_so)
+    LD_TECH_ld_flag += -shared
+else
+    # error
+endif
+
+#安全编译选项添加
+LD_TECH_comp_flag += -fstack-protector-all
+LD_TECH_ld_flag +=-Wl,-z,relro,-z,now -Wl,-z,noexecstack
+
+ifeq ($(strip $(LD_TECH_make_release)), yes)
+    ifeq ($(strip $(private_make_release_O2)), yes)
+        LD_TECH_comp_flag += -g -O2 -Wall -Werror
+    else
+        LD_TECH_comp_flag += -g -O0 -Wall -Werror
+    endif
+else
+    LD_TECH_comp_flag += -g -O0 -Wall -Werror
+endif
+
+this_target_obj_dir := $(patsubst $(__LD_TECH_CODE_DIR)%,$(__LD_TECH_OBJ_DIR)%,$(this_target_dir))
+
+TARGET := $(this_target_obj_dir)/$(TARGET)
+
+c_code := $(abspath $(wildcard *.c))
+cpp_code := $(abspath $(wildcard *.cpp))
+cc_code := $(abspath $(wildcard *.cc))
+s_code := $(abspath $(wildcard *.s))
+
+c_code += $(abspath $(foreach dir,$(EXTRA_CODE_DIRS),$(wildcard $(dir)/*.c)))
+cpp_code += $(abspath $(foreach dir,$(EXTRA_CODE_DIRS),$(wildcard $(dir)/*.cpp)))
+cc_code += $(abspath $(foreach dir,$(EXTRA_CODE_DIRS),$(wildcard $(dir)/*.cc)))
+s_code += $(abspath $(foreach dir,$(EXTRA_CODE_DIRS),$(wildcard $(dir)/*.s)))
+
+obj := $(patsubst %.c,%.o,$(c_code))
+obj += $(patsubst %.cpp,%.o,$(cpp_code))
+obj += $(patsubst %.cc,%.o,$(cc_code))
+obj += $(patsubst %.s,%.o,$(s_code))
+obj := $(patsubst $(__LD_TECH_CODE_DIR)%,$(__LD_TECH_OBJ_DIR)%,$(obj))
+
+ifneq ($(strip $(COMM_CODE)),)
+    COMM_CODE := $(abspath $(COMM_CODE))
+    obj_comm_code := $(patsubst %.c,%.o,$(COMM_CODE))
+    obj_comm_code := $(patsubst %.cpp,%.o,$(obj_comm_code))
+    obj_comm_code := $(patsubst %.cc,%.o,$(obj_comm_code))
+    obj_comm_code := $(patsubst %.s,%.o,$(obj_comm_code))
+    obj_comm_code := $(patsubst $(__LD_TECH_CODE_DIR)/%,%,$(obj_comm_code))
+    obj_comm_code := $(patsubst %,$(this_target_obj_dir)/obj4comm_code/%,$(obj_comm_code))
+endif
+
+obj += $(obj_comm_code)
+
+build_dustbin_dir := $(LD_TECH_BUILD_DIR)/dustbin
+
+depends := $(patsubst %.o,%.d,$(obj))
+
+ifeq ($(strip $(INSTALL_DIR)),)
+    # so
+    ifeq ($(strip $(IS_SO)), yes)
+        INSTALL_DIR := $(LD_TECH_INSTALL_LIB_DIR)
+
+    # app
+    else ifeq ($(strip $(IS_APP)), yes)
+        INSTALL_DIR := $(LD_TECH_INSTALL_BIN_DIR)
+    else
+        INSTALL_DIR := $(build_dustbin_dir)
+    endif
+
+endif
+
+.PHONY: all prepare clean
+
+all: prepare $(TARGET)
+
+prepare:
+	@:
+
+-include $(depends)
+$(__LD_TECH_OBJ_DIR)%.d: $(__LD_TECH_CODE_DIR)%.c
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	@$(CC) $(private_comp_INC) $(LD_TECH_comp_INC) -MM $< > $@
+	@sed -i 's,$(notdir $(patsubst %.d,%.o,$@)):,$@ $(patsubst %.d,%.o,$@):,g' $@
+$(__LD_TECH_OBJ_DIR)%.d: $(__LD_TECH_CODE_DIR)%.cpp
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	@$(CPPC) $(private_comp_INC) $(LD_TECH_comp_INC) -MM $< > $@
+	@sed -i 's,$(notdir $(patsubst %.d,%.o,$@)):,$@ $(patsubst %.d,%.o,$@):,g' $@
+$(__LD_TECH_OBJ_DIR)%.d: $(__LD_TECH_CODE_DIR)%.cc
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	@$(CPPC) $(private_comp_INC) $(LD_TECH_comp_INC) -MM $< > $@
+	@sed -i 's,$(notdir $(patsubst %.d,%.o,$@)):,$@ $(patsubst %.d,%.o,$@):,g' $@
+
+$(__LD_TECH_OBJ_DIR)%.o: $(__LD_TECH_CODE_DIR)%.c
+	@echo ""
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	$(CC) -c $< -o $@ $(LD_TECH_comp_flag) $(private_comp_flag) $(LD_TECH_comp_flag_c) $(private_comp_flag_c) $(private_comp_INC) $(LD_TECH_comp_INC)
+$(__LD_TECH_OBJ_DIR)%.o: $(__LD_TECH_CODE_DIR)%.cpp
+	@echo ""
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	$(CPPC) -c $< -o $@ $(LD_TECH_comp_flag) $(private_comp_flag) $(LD_TECH_comp_flag_cpp) $(private_comp_flag_cpp) $(private_comp_INC) $(LD_TECH_comp_INC)
+$(__LD_TECH_OBJ_DIR)%.o: $(__LD_TECH_CODE_DIR)%.cc
+	@echo ""
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	$(CPPC) -c $< -o $@ $(LD_TECH_comp_flag) $(private_comp_flag) $(LD_TECH_comp_flag_cpp) $(private_comp_flag_cpp) $(private_comp_INC) $(LD_TECH_comp_INC)
+$(__LD_TECH_OBJ_DIR)%.o: $(__LD_TECH_CODE_DIR)%.s
+	@echo ""
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	$(CC) -c $< -o $@ $(LD_TECH_comp_flag) $(private_comp_flag)
+
+# for commom_code begin
+$(this_target_obj_dir)/obj4comm_code/%.d: $(__LD_TECH_CODE_DIR)/%.c
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	@$(CC) $(private_comp_INC) $(LD_TECH_comp_INC) -MM $< > $@
+	@sed -i 's,$(notdir $(patsubst %.d,%.o,$@)):,$@ $(patsubst %.d,%.o,$@):,g' $@
+$(this_target_obj_dir)/obj4comm_code/%.d: $(__LD_TECH_CODE_DIR)/%.cpp
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	@$(CPPC) $(private_comp_INC) $(LD_TECH_comp_INC) -MM $< > $@
+	@sed -i 's,$(notdir $(patsubst %.d,%.o,$@)):,$@ $(patsubst %.d,%.o,$@):,g' $@
+$(this_target_obj_dir)/obj4comm_code/%.d: $(__LD_TECH_CODE_DIR)/%.cc
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	@$(CPPC) $(private_comp_INC) $(LD_TECH_comp_INC) -MM $< > $@
+	@sed -i 's,$(notdir $(patsubst %.d,%.o,$@)):,$@ $(patsubst %.d,%.o,$@):,g' $@
+
+  $(this_target_obj_dir)/obj4comm_code/%.o: $(__LD_TECH_CODE_DIR)/%.c
+	@echo ""
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	$(CC) -c $< -o $@ $(LD_TECH_comp_flag) $(private_comp_flag) $(LD_TECH_comp_flag_c) $(private_comp_flag_c) $(private_comp_INC) $(LD_TECH_comp_INC)
+$(this_target_obj_dir)/obj4comm_code/%.o: $(__LD_TECH_CODE_DIR)/%.cpp
+	@echo ""
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	$(CPPC) -c $< -o $@ $(LD_TECH_comp_flag) $(private_comp_flag) $(LD_TECH_comp_flag_cpp) $(private_comp_flag_cpp) $(private_comp_INC) $(LD_TECH_comp_INC)
+$(this_target_obj_dir)/obj4comm_code/%.o: $(__LD_TECH_CODE_DIR)/%.cc
+	@echo ""
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	$(CPPC) -c $< -o $@ $(LD_TECH_comp_flag) $(private_comp_flag) $(LD_TECH_comp_flag_cpp) $(private_comp_flag_cpp) $(private_comp_INC) $(LD_TECH_comp_INC)
+$(this_target_obj_dir)/obj4comm_code/%.o: $(__LD_TECH_CODE_DIR)/%.s
+	@echo ""
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	$(CC) -c $< -o $@ $(LD_TECH_comp_flag) $(private_comp_flag)
+# for common_code end
+
+$(TARGET): $(obj) $(obj_extra)
+	@echo ""; echo "****"
+	@if [ ! -d $(dir $@) ]; then rm -rf $(dir $@); mkdir -p $(dir $@); fi
+	g++ -o $@ $(LD_TECH_ld_flag) $(private_ld_flag) $^ $(private_ld_LINK) $(LD_TECH_ld_LINK) $(COMM_SO)
+	@if [ X$(LD_TECH_is_stripped_flag) = X"yes" ]; then echo "-------- strip $@ --------"; strip $@; fi
+	@install -d $(INSTALL_DIR)
+	@install --verbose --mode=0755 $@ $(INSTALL_DIR)
+	$(private_install_cmd)
+
+	@echo ""
+
+clean:
+	@echo ""
+
+	-rm -f $(INSTALL_DIR)/$(TARGET)
+
+	-rm -f $(depends)
+	-rm -f $(TARGET)
+	-rm -f $(obj)
+
+	@echo ""

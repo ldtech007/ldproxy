@@ -1,0 +1,2 @@
+IS_SO := yes
+include $(BUILD_SYS_DIR)/Makefile.core

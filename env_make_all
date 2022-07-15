@@ -1,0 +1,18 @@
+#!/bin/bash
+
+root_dir=${PWD}
+
+export LD_TECH_INSTALL_DIR="${root_dir}/install"
+    export LD_TECH_INSTALL_LIB_DIR="${LD_TECH_INSTALL_DIR}/lib"
+	export LD_TECH_INSTALL_BIN_DIR="${LD_TECH_INSTALL_DIR}/bin"
+
+export LD_TECH_BUILD_DIR="${root_dir}/build"
+    export __LD_TECH_CODE_DIR="${root_dir}"
+    export __LD_TECH_OBJ_DIR="${LD_TECH_BUILD_DIR}/obj"
+
+export BUILD_SYS_DIR="${__LD_TECH_CODE_DIR}/makesys"
+export LD_TECH_is_stripped_flag="no"
+
+export LD_TECH_make_release="yes"
+
+export LD_TECH_ENV_MAKE_ALL_ISSET="yes"
