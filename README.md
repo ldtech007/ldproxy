@@ -11,7 +11,7 @@
 3. 在install/bin目录下可以找到编译好的二进制。
 
 ## 安装LDProxy_server
-1. 在vps上执行:  ```mkdir -p /etc/ldproxy```
+1. 在vps上执行:  `mkdir -p /etc/ldproxy`
 2. 把二进制文件LDProxy_server放在vps上随便一个位置，把install/ldproxy/server.json 放到vps的目录/etc/ldproxy下面。
 3. 然后根据自己的实际情况来修改server.json的local_addr和local_port。 其中local_addr是你vps的ip，local_port随便填一个没有被占用的端口。
 4. 在你编译环境上执行install/bin下的二进制generate_secretkey来生成secretkey，把新生成的secretkey复制到vps上的server.json中。
@@ -30,5 +30,6 @@
 当然如果你的路由器支持openwrt，也可以把LDProxy_client交叉编译成ipk包，然后部署在路由器上，家里的所有支持http代理的设备（比如ps4、switch、手机、ipad等）就都可以畅享科学上网的快乐了。
 
 如果你对此代理的实现方式感兴趣，可以关注我的公众号，后面我会持续分享。
-![d6e87118f165c5ce4282b3b2bd3c10b](https://user-images.githubusercontent.com/12081772/179502230-5cbad91d-8280-45fd-9b8b-b04cba80f8b0.jpg)
+![8cf5acb0-a9c4-441a-be5e-dc3dde1ebeee](https://github.com/ldtech007/ldproxy/assets/12081772/8eccd483-0a43-4c4c-9385-c46ddf18ce72)
+
 
